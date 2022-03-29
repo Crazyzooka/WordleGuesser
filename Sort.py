@@ -16,6 +16,7 @@ def BubbleSortByLocations(targets, locations):
 				finished = False
 	return targets
 
+##INCOMPLETE##
 def InsertionSortByLocations(targets, locations):
 	finished = False
 	while finished == False:
