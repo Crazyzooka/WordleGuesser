@@ -62,9 +62,11 @@ spelling = enchant.Dict('en_US')
 currentWordList = dictionaryWordList
 currentWordCommonChars = dictionaryWordCommonLetters
 incorrectLetters = list()
-
+letterCorrected = set()
+tries = 6
 
 isProcessedAlready = False 
+isFinished = False
 
 while True:
 	wordInput = input("The input:")
@@ -75,13 +77,7 @@ while True:
 	wordInput = list(wordInput)
 	correctness = list(correctness)
 
-	isFinished = True;
-	for correct in correctness:
-		if int(correct) != CORRECT:
-			isFinished = False;
-			break;
-
-	if isFinished == False:
+	if isFinished == False and tries > 0:
 
 		size = len(wordInput)
 
@@ -261,7 +257,7 @@ while True:
 			for char in word:
 				correctCharEmpty = True
 				if (char in validateCount) == True:
-					if validateCount[char] > 0:
+					if validateCount[char] > 1:
 						validateCount.update({char:validateCount[char] - 1})
 						correctCharEmpty = False
 					else:
@@ -272,7 +268,7 @@ while True:
 						valid = False
 						break
 					
-			if valid == True:
+			if valid == True and len(validateCount.items()) == 0:
 				tempList.append(word)
 				commList.append(currentWordCommonChars[index])
 			index += 1;
@@ -294,23 +290,53 @@ while True:
 		currentWordList = tempList
 		currentWordCommonChars = commList
 
-		# Sort by word likeliness
-		currentWordList = Sort.BubbleSortByLocations(currentWordList, currentWordCommonChars)
+		index = 0
+		for char in wordInput:
+			if int(correctness[index]) == INCORRECT:
+				letterStatistics[ord(char) - 97][index] -= 3
+
+			if int(correctness[index]) == RELOCATE:
+				letterStatistics[ord(char) - 97][index] -= 1
+
+			if (char in letterCorrected) == False and int(correctness[index]) == CORRECT:
+				letterStatistics[ord(char) - 97][index] += 1 + tries
+				letterCorrected.add(char)
+
+			index += 1
+
+		wordChanceScore = currentWordCommonChars.copy()
+
+		# We want to add the data on the smallest set possible, once only
+		for i in range(len(currentWordList)):
+			index = 0
+			isDuplicate = set()
+			for char in currentWordList[i]:
+				if (char in isDuplicate) == False:
+					wordChanceScore[i] = int(wordChanceScore[i]) + int(letterStatistics[ord(char) - 97][index])
+					isDuplicate.add(char)
+				index += 1
+
+		# Sort by word score
+		currentWordList = Sort.BubbleSortByLocations(currentWordList, wordChanceScore)
 
 		print('')
 		for i in range(len(currentWordList)):
-			print(currentWordList[i] + ':' + str(currentWordCommonChars[i]), end=' ')
+			print(currentWordList[i] + ':' + str(wordChanceScore[i]), end=' ')
 		print('')
 
 		# Need to save the incorrect letters so we don't populate the list in the next run with the words excluded in this one
-		isProcessedAlready = True
-	else:
-		# Add word statistics to some text file so we can teach AI to guess the word in the future based on chances
-		index = 0
-		for char in wordInput:
-			letterStatistics[ord(char) - 97][index] += 1
-			index += 1
 
+		isFinished = True;
+		for correct in correctness:
+			if int(correct) != CORRECT:
+				isFinished = False;
+				break;
+
+		isProcessedAlready = True
+		tries -= 1
+
+	if isFinished == True:
+		# Add word statistics to some text file so we can teach AI to guess the word in the future based on chances
 		tempDataStatistics = ''
 
 		for stats in letterStatistics:
@@ -331,7 +357,10 @@ while True:
 		currentWordList = dictionaryWordList
 		currentWordCommonChars = dictionaryWordCommonLetters
 		incorrectLetters = list()
-		isProcessedAlready = False 
+		isProcessedAlready = False
+		letterCorrected.clear()
+		tries = 6
+		isFinished = False
 
 		print("Congratulations! You Won!")
 		print("")
